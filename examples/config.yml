@@ -1,0 +1,6 @@
+strategy: "RoundRobin"
+services: 
+  - name: "test service"
+    replicas:
+      - "http://localhost:8081"
+      - "http://localhost:8082"
