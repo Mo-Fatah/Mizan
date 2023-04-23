@@ -1,13 +1,15 @@
-.PHONY: dummy-service
-dummy-service:
-	go run ./test/dummy_service/dummy_service.go -port 8081 &
-	go run ./test/dummy_service/dummy_service.go -port 8082 &
+.PHONY: example-service
+example-service:
+	go run ./examples/example_service.go -port 9090 &
+	go run ./examples/example_service.go -port 9091 &
+	go run ./examples/example_service.go -port 9092 &
 	sleep 2
 
-.PHONY: kill-dummy
-kill-dummy:
-	sudo kill -9 $$(sudo lsof -t -i:8081)
-	sudo kill -9 $$(sudo lsof -t -i:8082)
+.PHONY: kill-example
+kill-example:
+	sudo kill -9 $$(sudo lsof -t -i:9090)
+	sudo kill -9 $$(sudo lsof -t -i:9091)
+	sudo kill -9 $$(sudo lsof -t -i:9092)
 
 .PHONY: test
 test:
