@@ -1,10 +1,14 @@
-package dummyservice
+package testservices
 
 import (
 	"context"
 	"errors"
 	"fmt"
 	"net/http"
+)
+
+const (
+	BASE_PORT = 9090
 )
 
 type Service interface {
@@ -18,7 +22,7 @@ type DummyService struct {
 
 func (ds *DummyService) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	resp.WriteHeader(200)
-	resp.Write([]byte(fmt.Sprintf("All is Good from server %d\n", ds.Port)))
+	resp.Write([]byte(fmt.Sprintf("All is Good from dummy service on port %d\n", ds.Port)))
 }
 
 func (ds *DummyService) Run() error {
@@ -60,7 +64,7 @@ func (dsg *DummyServiceGen) Start() {
 	for i := 0; i < dsg.replicas; i++ {
 		ds := &DummyService{
 			Ch:   dsg.ch,
-			Port: 8081 + i,
+			Port: BASE_PORT + i,
 		}
 		go ds.Run()
 	}
