@@ -1,6 +1,12 @@
 strategy: "RoundRobin"
+ports:
+  - 8080
+  - 8081
+  - 8082
 services: 
-  - name: "test service"
+  - matcher: "/api/v1"
+    name: "test service"
     replicas:
-      - "http://localhost:8081"
-      - "http://localhost:8082"
+      - "http://localhost:9090"
+      - "http://localhost:9091"
+      - "http://localhost:9092"
