@@ -1,6 +1,7 @@
 package mizan
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httputil"
@@ -18,9 +19,11 @@ type Mizan struct {
 	// Servers is a map of service matcher to a list of servers/replicas
 	ServerList map[string]*config.ServerList
 	Ports      []int
+	shutDown   chan bool
 }
 
 func NewMizan(conf *config.Config) *Mizan {
+	shutdown := make(chan bool)
 	servers := make(map[string]*config.ServerList)
 	for _, service := range conf.Services {
 		for _, replica := range service.Replicas {
@@ -39,7 +42,7 @@ func NewMizan(conf *config.Config) *Mizan {
 			servers[service.Matcher].Add(&server)
 		}
 	}
-	return &Mizan{Config: conf, ServerList: servers, Ports: conf.Ports}
+	return &Mizan{Config: conf, ServerList: servers, Ports: conf.Ports, shutDown: shutdown}
 }
 
 func (m *Mizan) Start() {
@@ -51,6 +54,10 @@ func (m *Mizan) Start() {
 	wg.Wait()
 }
 
+func (m *Mizan) ShutDown() {
+	close(m.shutDown)
+}
+
 func (m *Mizan) startServer(port int, wg *sync.WaitGroup) {
 	defer wg.Done()
 	log.Info("Starting Listening on port ", port)
@@ -58,8 +65,17 @@ func (m *Mizan) startServer(port int, wg *sync.WaitGroup) {
 		Addr:    fmt.Sprintf(":%d", port),
 		Handler: m,
 	}
-	if err := server.ListenAndServe(); err != nil {
-		log.Fatal(err)
+
+	go func() {
+		<-m.shutDown
+		log.Info("Shutting down server")
+		if err := server.Close(); err != nil {
+			log.Error(err)
+		}
+	}()
+
+	if err := server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+		log.Error(err)
 	}
 }
 
