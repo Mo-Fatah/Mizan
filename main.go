@@ -6,8 +6,8 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/Mo-Fatah/Mizan/internal/mizan"
-	"github.com/Mo-Fatah/Mizan/internal/pkg/config"
+	"github.com/Mo-Fatah/mizan/internal/mizan"
+	"github.com/Mo-Fatah/mizan/internal/pkg/config"
 )
 
 var (

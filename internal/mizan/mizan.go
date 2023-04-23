@@ -8,7 +8,7 @@ import (
 	"net/url"
 	"sync"
 
-	"github.com/Mo-Fatah/Mizan/internal/pkg/config"
+	"github.com/Mo-Fatah/mizan/internal/pkg/config"
 	log "github.com/sirupsen/logrus"
 )
 

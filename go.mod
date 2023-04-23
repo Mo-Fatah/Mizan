@@ -1,4 +1,4 @@
-module github.com/Mo-Fatah/Mizan
+module github.com/Mo-Fatah/mizan
 
 go 1.19
 

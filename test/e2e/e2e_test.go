@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Mo-Fatah/Mizan/internal/mizan"
-	"github.com/Mo-Fatah/Mizan/internal/pkg/config"
-	testservice "github.com/Mo-Fatah/Mizan/test/testutil/testservices"
+	"github.com/Mo-Fatah/mizan/internal/mizan"
+	"github.com/Mo-Fatah/mizan/internal/pkg/config"
+	testservice "github.com/Mo-Fatah/mizan/test/testutil/testservices"
 	"github.com/stretchr/testify/assert"
 )
 
