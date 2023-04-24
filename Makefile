@@ -11,6 +11,13 @@ kill-example:
 	sudo kill -9 $$(sudo lsof -t -i:9091)
 	sudo kill -9 $$(sudo lsof -t -i:9092)
 
+.PHONY: test-e2e
+test-e2e: 
+	go test ./test/e2e/
+
+.PHONY: test-unit
+test-unit:
+	go test ./internal/...
+
 .PHONY: test
-test:
-	go test -v ./test/e2e/
+test: test-unit test-e2e

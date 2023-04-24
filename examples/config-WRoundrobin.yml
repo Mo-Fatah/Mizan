@@ -1,0 +1,18 @@
+strategy: "WeightedRoundRobin"
+ports:
+  - 8080
+  - 8081
+  - 8082
+services: 
+  - matcher: "/api/v1"
+    name: "test service"
+    replicas:
+      - url: "http://localhost:9090"
+        metadata:
+          weight: 1
+      - url: "http://localhost:9091"
+        metadata:
+          weight: 1
+      - url: "http://localhost:9092"
+        metadata:
+          weight: 1

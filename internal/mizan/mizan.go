@@ -6,8 +6,11 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"strings"
 	"sync"
 
+	balancer "github.com/Mo-Fatah/mizan/internal/pkg/balancer"
+	"github.com/Mo-Fatah/mizan/internal/pkg/common"
 	"github.com/Mo-Fatah/mizan/internal/pkg/config"
 	log "github.com/sirupsen/logrus"
 )
@@ -17,32 +20,54 @@ type Mizan struct {
 	// TODO (Mo-Fatah): Should add hot reload for config
 	Config *config.Config
 	// Servers is a map of service matcher to a list of servers/replicas
-	ServerList map[string]*config.ServerList
-	Ports      []int
-	shutDown   chan bool
+	ServerMap map[string]balancer.Balancer
+	// Ports to which Mizan will listen on
+	Ports    []int
+	shutDown chan bool
 }
 
 func NewMizan(conf *config.Config) *Mizan {
 	shutdown := make(chan bool)
-	servers := make(map[string]*config.ServerList)
+	servers := make(map[string]balancer.Balancer)
+
 	for _, service := range conf.Services {
 		for _, replica := range service.Replicas {
-			serverUrl, err := url.Parse(replica)
+			serverUrl, err := url.Parse(replica.Url)
 			if err != nil {
 				log.Fatal(err)
 			}
-			server := config.Server{
-				Url:   *serverUrl,
-				Proxy: httputil.NewSingleHostReverseProxy(serverUrl),
+
+			metaData := make(map[string]string)
+			for k, v := range replica.MetaData {
+				metaData[k] = v
+			}
+			server := common.Server{
+				Url:      *serverUrl,
+				Proxy:    httputil.NewSingleHostReverseProxy(serverUrl),
+				MetaData: metaData,
 			}
 
 			if _, ok := servers[service.Matcher]; !ok {
-				servers[service.Matcher] = &config.ServerList{}
+				servers[service.Matcher] = NewBalancer(conf.Strategy, metaData)
 			}
 			servers[service.Matcher].Add(&server)
 		}
 	}
-	return &Mizan{Config: conf, ServerList: servers, Ports: conf.Ports, shutDown: shutdown}
+	return &Mizan{Config: conf, ServerMap: servers, Ports: conf.Ports, shutDown: shutdown}
+}
+
+func NewBalancer(strategy string, metaData map[string]string) balancer.Balancer {
+	switch strings.ToLower(strategy) {
+	case "roundrobin":
+		return &balancer.RoundRobin{}
+	case "weightedroundrobin":
+		if _, ok := metaData["weight"]; !ok {
+			log.Fatal("Weighted Round Robin strategy requires a weight to be specified in the metadata")
+		}
+		return &balancer.WeightedRoundRobin{}
+	default:
+		return &balancer.RoundRobin{}
+	}
 }
 
 func (m *Mizan) Start() {
@@ -52,10 +77,6 @@ func (m *Mizan) Start() {
 		wg.Add(1)
 	}
 	wg.Wait()
-}
-
-func (m *Mizan) ShutDown() {
-	close(m.shutDown)
 }
 
 func (m *Mizan) startServer(port int, wg *sync.WaitGroup) {
@@ -79,17 +100,19 @@ func (m *Mizan) startServer(port int, wg *sync.WaitGroup) {
 	}
 }
 
-func (m *Mizan) findService(path string) (*config.ServerList, error) {
-	if _, ok := m.ServerList[path]; !ok {
+func (m *Mizan) findService(path string) (balancer.Balancer, error) {
+	if _, ok := m.ServerMap[path]; !ok {
 		return nil, fmt.Errorf("couldn't find path %s", path)
 	}
-	return m.ServerList[path], nil
+	return m.ServerMap[path], nil
 }
 
 func (m *Mizan) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	log.Infof("Received request from address %s", r.RemoteAddr)
-	sl, err := m.findService(r.URL.Path)
+	service := r.URL.Path
+	log.Infof("Request received from address %s to service %s", r.RemoteAddr, service)
+	sl, err := m.findService(service)
 	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
 		log.Error(err)
 		return
 	}
@@ -97,4 +120,8 @@ func (m *Mizan) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	log.Infof("Proxying request to %s", server.Url.String())
 	server.Proxy.ServeHTTP(w, r)
+}
+
+func (m *Mizan) ShutDown() {
+	close(m.shutDown)
 }

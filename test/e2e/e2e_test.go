@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Mo-Fatah/mizan/internal/mizan"
 	"github.com/Mo-Fatah/mizan/internal/pkg/config"
@@ -26,15 +27,16 @@ services:
   - matcher: "/api/v1"
     name: "test service"
     replicas:
-      - "http://localhost:9090"
-      - "http://localhost:9091"
-      - "http://localhost:9092"
+      - url: "http://localhost:9090"
+      - url: "http://localhost:9091"
+      - url: "http://localhost:9092"
 `
 )
 
 // A very simple/sloppy test to check if the proxy is working as expected
 func TestE2E(t *testing.T) {
 	envSetup(t)
+	time.Sleep(1 * time.Second)
 	for i := 0; i < 10; i++ {
 		resp, err := http.Get(fmt.Sprintf("http://localhost:%d%s", (i%3)+8080, "/api/v1"))
 		assert.NoError(t, err)

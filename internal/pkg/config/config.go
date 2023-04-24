@@ -1,9 +1,9 @@
 package config
 
 import (
-	"net/http/httputil"
-	"net/url"
-	"sync/atomic"
+	"io"
+
+	"gopkg.in/yaml.v3"
 )
 
 type Config struct {
@@ -15,27 +15,27 @@ type Config struct {
 }
 
 type Service struct {
-	Name     string   `yaml:"name"`
-	Matcher  string   `yaml:"matcher"`
-	Replicas []string `yaml:"replicas"`
+	Name     string    `yaml:"name"`
+	Matcher  string    `yaml:"matcher"`
+	Replicas []Replica `yaml:"replicas"`
 }
 
-type Server struct {
-	Url   url.URL
-	Proxy *httputil.ReverseProxy
+type Replica struct {
+	Url      string            `yaml:"url"`
+	MetaData map[string]string `yaml:"metadata"`
 }
 
-type ServerList struct {
-	Servers []*Server
-	current uint32
-}
+func LoadConfig(reader io.Reader) (*Config, error) {
+	buf, err := io.ReadAll(reader)
+	if err != nil {
+		return nil, err
+	}
 
-func (sl *ServerList) Next() *Server {
-	curr := sl.current
-	sl.current = atomic.AddUint32(&sl.current, 1) % uint32(len(sl.Servers))
-	return sl.Servers[curr]
-}
+	config := Config{}
 
-func (sl *ServerList) Add(s *Server) {
-	sl.Servers = append(sl.Servers, s)
+	if err = yaml.Unmarshal(buf, &config); err != nil {
+		return nil, err
+	}
+
+	return &config, nil
 }
