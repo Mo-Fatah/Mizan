@@ -22,7 +22,7 @@ type DummyService struct {
 
 func (ds *DummyService) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	resp.WriteHeader(200)
-	resp.Write([]byte(fmt.Sprintf("All is Good from dummy service on port %d\n", ds.Port)))
+	resp.Write([]byte(fmt.Sprintf("OK from %d", ds.Port)))
 }
 
 func (ds *DummyService) Run() error {
