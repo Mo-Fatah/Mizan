@@ -48,7 +48,7 @@ func NewMizan(conf *config.Config) *Mizan {
 			}
 
 			if _, ok := servers[service.Matcher]; !ok {
-				servers[service.Matcher] = NewBalancer(conf.Strategy, metaData)
+				servers[service.Matcher] = NewBalancer(conf.Strategy)
 			}
 			servers[service.Matcher].Add(&server)
 		}
@@ -56,17 +56,14 @@ func NewMizan(conf *config.Config) *Mizan {
 	return &Mizan{Config: conf, ServerMap: servers, Ports: conf.Ports, shutDown: shutdown}
 }
 
-func NewBalancer(strategy string, metaData map[string]string) balancer.Balancer {
+func NewBalancer(strategy string) balancer.Balancer {
 	switch strings.ToLower(strategy) {
-	case "roundrobin":
-		return &balancer.RoundRobin{}
-	case "weightedroundrobin":
-		if _, ok := metaData["weight"]; !ok {
-			log.Fatal("Weighted Round Robin strategy requires a weight to be specified in the metadata")
-		}
-		return &balancer.WeightedRoundRobin{}
+	case "rr":
+		return &balancer.RR{}
+	case "wrr":
+		return &balancer.WRR{}
 	default:
-		return &balancer.RoundRobin{}
+		return &balancer.RR{}
 	}
 }
 
