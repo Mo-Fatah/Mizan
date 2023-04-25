@@ -13,10 +13,10 @@ import (
 // TODO (Mo-Fatah): Add support for calculating live connecitons to each server and use that as a weight
 type WRR struct {
 	servers []*WRRServer
+	// Mutex to protect the Servers slice from concurrent writes (when adding new servers with hot reload)
+	mu *sync.Mutex
 	// The index of the current server
 	current uint32
-	// Mutex to protect the Servers slice from concurrent writes (when adding new servers with hot reload)
-	mu sync.Mutex
 	// The current server load counter.
 	// When this counter reaches the weight of the current server, the next server will be selected
 	currentServerLoadCounter uint32
@@ -25,6 +25,13 @@ type WRR struct {
 type WRRServer struct {
 	server *common.Server
 	weight uint32
+}
+
+func NewWRR() *WRR {
+	return &WRR{
+		servers: []*WRRServer{},
+		mu:      &sync.Mutex{},
+	}
 }
 
 // Next returns the next server to be used based on the weight of each server.

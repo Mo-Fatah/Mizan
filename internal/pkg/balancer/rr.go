@@ -2,25 +2,33 @@ package balancer
 
 import (
 	"sync"
-	"sync/atomic"
 
 	"github.com/Mo-Fatah/mizan/internal/pkg/common"
 )
 
-// RoundRobin Balancer will select the next server in the list of servers in a round robin fashion
-// This is the default balancer used by Mizan
-// This is the same as Weighted Round Robin Balancer with all weights set to 1
+// Round Robin Balancer will select the next server in the list of servers in a round robin fashion.
+// This is the default balancer used by Mizan.
+// Equivalent to Weighted Round Robin with all weights set to 1.
 type RR struct {
 	Servers []*common.Server
+	// Mutex to protect the Servers slice from concurrent writes (when adding new servers with hot reload)
+	mu *sync.Mutex
 	// The index of the current server
 	current uint32
-	// Mutex to protect the Servers slice from concurrent writes (when adding new servers with hot reload)
-	mu sync.Mutex
+}
+
+func NewRR() *RR {
+	return &RR{
+		Servers: []*common.Server{},
+		mu:      &sync.Mutex{},
+	}
 }
 
 func (rr *RR) Next() *common.Server {
+	rr.mu.Lock()
+	defer rr.mu.Unlock()
 	curr := rr.current
-	rr.current = atomic.AddUint32(&rr.current, 1) % uint32(len(rr.Servers))
+	rr.current = (rr.current + 1) % uint32(len(rr.Servers))
 	return rr.Servers[curr]
 }
 

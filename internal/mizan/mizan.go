@@ -41,6 +41,7 @@ func NewMizan(conf *config.Config) *Mizan {
 			for k, v := range replica.MetaData {
 				metaData[k] = v
 			}
+
 			server := common.Server{
 				Url:      *serverUrl,
 				Proxy:    httputil.NewSingleHostReverseProxy(serverUrl),
@@ -53,17 +54,22 @@ func NewMizan(conf *config.Config) *Mizan {
 			servers[service.Matcher].Add(&server)
 		}
 	}
-	return &Mizan{Config: conf, ServerMap: servers, Ports: conf.Ports, shutDown: shutdown}
+	return &Mizan{
+		Config:    conf,
+		ServerMap: servers,
+		Ports:     conf.Ports,
+		shutDown:  shutdown,
+	}
 }
 
 func NewBalancer(strategy string) balancer.Balancer {
 	switch strings.ToLower(strategy) {
 	case "rr":
-		return &balancer.RR{}
+		return balancer.NewRR()
 	case "wrr":
-		return &balancer.WRR{}
+		return balancer.NewWRR()
 	default:
-		return &balancer.RR{}
+		return balancer.NewRR()
 	}
 }
 
