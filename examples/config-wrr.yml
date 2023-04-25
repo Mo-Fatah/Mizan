@@ -1,4 +1,5 @@
-strategy: "WeightedRoundRobin"
+# wrr : Weighted Round Robin
+strategy: "wrr"
 ports:
   - 8080
   - 8081
@@ -9,7 +10,7 @@ services:
     replicas:
       - url: "http://localhost:9090"
         metadata:
-          weight: 1
+          weight: 10
       - url: "http://localhost:9091"
         metadata:
           weight: 1

@@ -1,4 +1,5 @@
-strategy: "RoundRobin"
+# rr : Round Robin
+strategy: "rr"
 ports:
   - 8080
   - 8081
