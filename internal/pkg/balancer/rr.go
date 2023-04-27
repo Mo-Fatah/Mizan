@@ -10,7 +10,7 @@ import (
 // This is the default balancer used by Mizan.
 // Equivalent to Weighted Round Robin with all weights set to 1.
 type RR struct {
-	Servers []*common.Server
+	servers []*common.Server
 	// Mutex to protect the Servers slice from concurrent writes (when adding new servers with hot reload)
 	mu *sync.Mutex
 	// The index of the current server
@@ -19,7 +19,7 @@ type RR struct {
 
 func NewRR() *RR {
 	return &RR{
-		Servers: []*common.Server{},
+		servers: []*common.Server{},
 		mu:      &sync.Mutex{},
 	}
 }
@@ -28,12 +28,12 @@ func (rr *RR) Next() *common.Server {
 	rr.mu.Lock()
 	defer rr.mu.Unlock()
 	curr := rr.current
-	rr.current = (rr.current + 1) % uint32(len(rr.Servers))
-	return rr.Servers[curr]
+	rr.current = (rr.current + 1) % uint32(len(rr.servers))
+	return rr.servers[curr]
 }
 
 func (rr *RR) Add(s *common.Server) {
 	rr.mu.Lock()
 	defer rr.mu.Unlock()
-	rr.Servers = append(rr.Servers, s)
+	rr.servers = append(rr.servers, s)
 }

@@ -12,7 +12,7 @@ import (
 // If the weight of server is not specified, it will be set to 1
 // TODO (Mo-Fatah): Add support for calculating live connecitons to each server and use that as a weight
 type WRR struct {
-	servers []*WRRServer
+	servers []*common.Server
 	// Mutex to protect the Servers slice from concurrent writes (when adding new servers with hot reload)
 	mu *sync.Mutex
 	// The index of the current server
@@ -22,14 +22,9 @@ type WRR struct {
 	currentServerLoadCounter uint32
 }
 
-type WRRServer struct {
-	server *common.Server
-	weight uint32
-}
-
 func NewWRR() *WRR {
 	return &WRR{
-		servers: []*WRRServer{},
+		servers: []*common.Server{},
 		mu:      &sync.Mutex{},
 	}
 }
@@ -39,21 +34,18 @@ func (wrr *WRR) Next() *common.Server {
 	wrr.mu.Lock()
 	defer wrr.mu.Unlock()
 
-	if wrr.currentServerLoadCounter < wrr.servers[wrr.current].weight {
+	if wrr.currentServerLoadCounter < wrr.servers[wrr.current].Weight {
 		wrr.currentServerLoadCounter++
-		return wrr.servers[wrr.current].server
+		return wrr.servers[wrr.current]
 	}
 	wrr.currentServerLoadCounter = 1
 	wrr.current = (wrr.current + 1) % uint32(len(wrr.servers))
-	return wrr.servers[wrr.current].server
+	return wrr.servers[wrr.current]
 }
 
 func (wrr *WRR) Add(s *common.Server) {
 	wrr.mu.Lock()
 	defer wrr.mu.Unlock()
-	server := &WRRServer{
-		server: s,
-		weight: s.GetMetaOrDefaultInt("weight", 1),
-	}
-	wrr.servers = append(wrr.servers, server)
+	s.Weight = s.GetMetaOrDefaultInt("weight", 1)
+	wrr.servers = append(wrr.servers, s)
 }

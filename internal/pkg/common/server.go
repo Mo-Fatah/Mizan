@@ -7,9 +7,12 @@ import (
 )
 
 type Server struct {
-	Url      url.URL
-	Proxy    *httputil.ReverseProxy
+	Url   url.URL
+	Proxy *httputil.ReverseProxy
+	// MetaData is a map of key-value pairs that can be used by the balancer
 	MetaData map[string]string
+	// Weight is used by the Weighted Round Robin balancer
+	Weight uint32
 }
 
 func (s *Server) GetMetaOrDefault(key string, defaultValue string) string {
