@@ -7,7 +7,7 @@ import (
 // Balancer is an interface that defines the behavior of a load balancer
 type Balancer interface {
 	// Next returns the next server to be used
-	Next() *common.Server
+	Next() (*common.Server, error)
 	// Add adds a new server to the balancer
 	Add(*common.Server)
 }

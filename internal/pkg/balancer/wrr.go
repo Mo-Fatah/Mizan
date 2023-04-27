@@ -2,8 +2,10 @@ package balancer
 
 import (
 	"sync"
+	"time"
 
 	"github.com/Mo-Fatah/mizan/internal/pkg/common"
+	"github.com/Mo-Fatah/mizan/internal/pkg/health"
 )
 
 // Weighted Round Robin Balancer
@@ -20,6 +22,8 @@ type WRR struct {
 	// The current server load counter.
 	// When this counter reaches the weight of the current server, the next server will be selected
 	currentServerLoadCounter uint32
+
+	hc *health.HealthChecker
 }
 
 func NewWRR() *WRR {
@@ -30,22 +34,35 @@ func NewWRR() *WRR {
 }
 
 // Next returns the next server to be used based on the weight of each server.
-func (wrr *WRR) Next() *common.Server {
+func (wrr *WRR) Next() (*common.Server, error) {
 	wrr.mu.Lock()
 	defer wrr.mu.Unlock()
+	var server *common.Server
+	start := time.Now()
+	for {
+		if wrr.currentServerLoadCounter < wrr.servers[wrr.current].GetWeight() {
+			wrr.currentServerLoadCounter++
+			server = wrr.servers[wrr.current]
+		} else {
+			wrr.currentServerLoadCounter = 1
+			wrr.current = (wrr.current + 1) % uint32(len(wrr.servers))
+			server = wrr.servers[wrr.current]
+		}
 
-	if wrr.currentServerLoadCounter < wrr.servers[wrr.current].Weight {
-		wrr.currentServerLoadCounter++
-		return wrr.servers[wrr.current]
+		if server.IsAlive() {
+			break
+		}
+
+		if time.Since(start) > timeout {
+			return nil, ErrNoAliveServers
+		}
 	}
-	wrr.currentServerLoadCounter = 1
-	wrr.current = (wrr.current + 1) % uint32(len(wrr.servers))
-	return wrr.servers[wrr.current]
+	return server, nil
 }
 
 func (wrr *WRR) Add(s *common.Server) {
 	wrr.mu.Lock()
 	defer wrr.mu.Unlock()
-	s.Weight = s.GetMetaOrDefaultInt("weight", 1)
+	s.SetWeight(s.GetMetaOrDefaultInt("weight", 1))
 	wrr.servers = append(wrr.servers, s)
 }

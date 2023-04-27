@@ -15,6 +15,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// TODO (Mo-Fatah): Add support for TLS
+// TODO (Mo-Fatah): Add support for HTTP/2
+// TODO (Mo-Fatah): Add support for gRPC
+// TODO (Mo-Fatah): Add shutdown channel to gracefully shutdown the server
 type Mizan struct {
 	// The configuration loaded from the config file
 	// TODO (Mo-Fatah): Should add hot reload for config
@@ -42,16 +46,11 @@ func NewMizan(conf *config.Config) *Mizan {
 				metaData[k] = v
 			}
 
-			server := common.Server{
-				Url:      *serverUrl,
-				Proxy:    httputil.NewSingleHostReverseProxy(serverUrl),
-				MetaData: metaData,
-			}
-
+			server := common.NewServer(*serverUrl, httputil.NewSingleHostReverseProxy(serverUrl), metaData)
 			if _, ok := servers[service.Matcher]; !ok {
 				servers[service.Matcher] = NewBalancer(conf.Strategy)
 			}
-			servers[service.Matcher].Add(&server)
+			servers[service.Matcher].Add(server)
 		}
 	}
 	return &Mizan{
@@ -119,10 +118,17 @@ func (m *Mizan) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		log.Error(err)
 		return
 	}
-	server := sl.Next()
 
-	log.Infof("Proxying request to %s", server.Url.String())
-	server.Proxy.ServeHTTP(w, r)
+	server, err := sl.Next()
+	if err != nil {
+		// All servers are down
+		w.WriteHeader(http.StatusInternalServerError)
+		log.Error("serivce: ", service, " %s", err)
+		return
+	}
+
+	log.Infof("Proxying request to %s", server.GetUrl().String())
+	server.Proxy(w, r)
 }
 
 func (m *Mizan) ShutDown() {

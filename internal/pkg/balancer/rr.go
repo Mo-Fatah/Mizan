@@ -2,6 +2,7 @@ package balancer
 
 import (
 	"sync"
+	"time"
 
 	"github.com/Mo-Fatah/mizan/internal/pkg/common"
 )
@@ -24,12 +25,20 @@ func NewRR() *RR {
 	}
 }
 
-func (rr *RR) Next() *common.Server {
+func (rr *RR) Next() (*common.Server, error) {
 	rr.mu.Lock()
 	defer rr.mu.Unlock()
-	curr := rr.current
-	rr.current = (rr.current + 1) % uint32(len(rr.servers))
-	return rr.servers[curr]
+	start := time.Now()
+	for {
+		curr := rr.current
+		rr.current = (rr.current + 1) % uint32(len(rr.servers))
+		if rr.servers[curr].IsAlive() {
+			return rr.servers[curr], nil
+		}
+		if time.Since(start) > timeout {
+			return nil, ErrNoAliveServers
+		}
+	}
 }
 
 func (rr *RR) Add(s *common.Server) {
