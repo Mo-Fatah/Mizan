@@ -4,14 +4,13 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"net/http/httputil"
-	"net/url"
 	"strings"
 	"sync"
 
 	balancer "github.com/Mo-Fatah/mizan/internal/pkg/balancer"
 	"github.com/Mo-Fatah/mizan/internal/pkg/common"
 	"github.com/Mo-Fatah/mizan/internal/pkg/config"
+	"github.com/Mo-Fatah/mizan/internal/pkg/health"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -32,43 +31,38 @@ type Mizan struct {
 
 func NewMizan(conf *config.Config) *Mizan {
 	shutdown := make(chan bool)
-	servers := make(map[string]balancer.Balancer)
-
+	serversMap := make(map[string]balancer.Balancer)
 	for _, service := range conf.Services {
+		servers := make([]*common.Server, 0)
 		for _, replica := range service.Replicas {
-			serverUrl, err := url.Parse(replica.Url)
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			metaData := make(map[string]string)
-			for k, v := range replica.MetaData {
-				metaData[k] = v
-			}
-
-			server := common.NewServer(*serverUrl, httputil.NewSingleHostReverseProxy(serverUrl), metaData)
-			if _, ok := servers[service.Matcher]; !ok {
-				servers[service.Matcher] = NewBalancer(conf.Strategy)
-			}
-			servers[service.Matcher].Add(server)
+			server := common.NewServer(replica, service.Name)
+			servers = append(servers, server)
 		}
+		serversMap[service.Matcher] = newBalancer(servers, conf.Strategy)
+
+		serversMap[service.Matcher].SetHealthChecker(health.NewHealthChecker(servers, shutdown))
 	}
+	// Start health checker
+	for _, serviceBalancer := range serversMap {
+		go serviceBalancer.HealthChecker().Start()
+	}
+
 	return &Mizan{
 		Config:    conf,
-		ServerMap: servers,
+		ServerMap: serversMap,
 		Ports:     conf.Ports,
 		shutDown:  shutdown,
 	}
 }
 
-func NewBalancer(strategy string) balancer.Balancer {
+func newBalancer(servers []*common.Server, strategy string) balancer.Balancer {
 	switch strings.ToLower(strategy) {
 	case "rr":
-		return balancer.NewRR()
+		return balancer.NewRR(servers)
 	case "wrr":
-		return balancer.NewWRR()
+		return balancer.NewWRR(servers)
 	default:
-		return balancer.NewRR()
+		return balancer.NewRR(servers)
 	}
 }
 
@@ -123,7 +117,7 @@ func (m *Mizan) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		// All servers are down
 		w.WriteHeader(http.StatusInternalServerError)
-		log.Error("serivce: ", service, " %s", err)
+		log.Errorf("All servers are down for service %s", service)
 		return
 	}
 

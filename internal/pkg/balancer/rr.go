@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/Mo-Fatah/mizan/internal/pkg/common"
+	"github.com/Mo-Fatah/mizan/internal/pkg/health"
 )
 
 // Round Robin Balancer will select the next server in the list of servers in a round robin fashion.
@@ -16,11 +17,13 @@ type RR struct {
 	mu *sync.Mutex
 	// The index of the current server
 	current uint32
+
+	Hc *health.HealthChecker
 }
 
-func NewRR() *RR {
+func NewRR(servers []*common.Server) *RR {
 	return &RR{
-		servers: []*common.Server{},
+		servers: servers,
 		mu:      &sync.Mutex{},
 	}
 }
@@ -45,4 +48,12 @@ func (rr *RR) Add(s *common.Server) {
 	rr.mu.Lock()
 	defer rr.mu.Unlock()
 	rr.servers = append(rr.servers, s)
+}
+
+func (rr *RR) HealthChecker() *health.HealthChecker {
+	return rr.Hc
+}
+
+func (rr *RR) SetHealthChecker(hc *health.HealthChecker) {
+	rr.Hc = hc
 }

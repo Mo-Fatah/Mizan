@@ -1,14 +1,19 @@
 package common
 
 import (
+	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"strconv"
+	"sync"
+
+	"github.com/Mo-Fatah/mizan/internal/pkg/config"
 )
 
 type Server struct {
-	url *url.URL
+	serviceName string
+	url         *url.URL
 	// Proxy is the reverse proxy that will be used to proxy requests to this server
 	proxy *httputil.ReverseProxy
 	// MetaData is a map of key-value pairs that can be used by the balancer
@@ -17,16 +22,32 @@ type Server struct {
 	weight uint32
 	// alive is used by the Balancer's Health Checker
 	alive bool
+
+	mu *sync.Mutex
 }
 
-func NewServer(url url.URL, proxy *httputil.ReverseProxy, metaData map[string]string) *Server {
-	return &Server{
-		url:      &url,
-		proxy:    proxy,
-		metaData: metaData,
-		weight:   1,
-		alive:    false,
+// TODO (Mo-Fatah): Refactor this to use the Service struct as a parameter
+func NewServer(replica *config.Replica, serviceName string) *Server {
+	serverUrl, err := url.Parse(replica.Url)
+	if err != nil {
+		log.Fatal(err)
 	}
+
+	metaData := make(map[string]string)
+	for k, v := range replica.MetaData {
+		metaData[k] = v
+	}
+
+	server := &Server{
+		url:         serverUrl,
+		proxy:       httputil.NewSingleHostReverseProxy(serverUrl),
+		metaData:    metaData,
+		alive:       false, /* TODO (Mo-Fatah): Should be false by default */
+		serviceName: serviceName,
+		mu:          &sync.Mutex{},
+	}
+	server.weight = server.GetMetaOrDefaultInt("weight", 1)
+	return server
 }
 
 func (s *Server) Proxy(w http.ResponseWriter, r *http.Request) {
@@ -38,6 +59,8 @@ func (s *Server) IsAlive() bool {
 }
 
 func (s *Server) SetLiveness(alive bool) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	old := s.alive
 	s.alive = alive
 	return old
@@ -45,6 +68,11 @@ func (s *Server) SetLiveness(alive bool) bool {
 
 func (s *Server) GetUrl() *url.URL {
 	return s.url
+}
+
+// TODO (Mo-Fatah): Implement this
+func (s *Server) GetServiceName() string {
+	return s.serviceName
 }
 
 func (s *Server) GetMetaOrDefault(key string, defaultValue string) string {

@@ -15,9 +15,9 @@ type Config struct {
 }
 
 type Service struct {
-	Name     string    `yaml:"name"`
-	Matcher  string    `yaml:"matcher"`
-	Replicas []Replica `yaml:"replicas"`
+	Name     string     `yaml:"name"`
+	Matcher  string     `yaml:"matcher"`
+	Replicas []*Replica `yaml:"replicas"`
 }
 
 type Replica struct {

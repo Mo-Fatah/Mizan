@@ -14,6 +14,11 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// TODO (Mo-Fatah): Add tests for the following:
+// - Load balancing strategies (Done)
+// - Health checking
+// - Load balancing strategies with health checking
+
 var (
 	replicas    = 8
 	mizanServer *mizan.Mizan
@@ -39,8 +44,6 @@ services:
 `
 	envSetup(t, configYaml)
 	defer tearDown(t)
-
-	time.Sleep(1 * time.Second)
 
 	ports := []int{9090, 9091, 9092}
 	portsIndex := 0
@@ -87,9 +90,7 @@ services:
           weight: 1
 `
 	envSetup(t, configYaml)
-	defer tearDown(t)
-
-	time.Sleep(1 * time.Second)
+	//defer tearDown(t)
 
 	portsFreq := map[int]int{
 		9090: 0,
@@ -112,7 +113,7 @@ services:
 		assert.NoError(t, err)
 		portsFreq[servicePort]++
 	}
-
+	fmt.Println(portsFreq)
 	assert.Equal(t, portsFreq[9090], 6)
 	assert.Equal(t, portsFreq[9091], 3)
 	assert.Equal(t, portsFreq[9092], 1)
@@ -123,10 +124,11 @@ func envSetup(t *testing.T, configYaml string) {
 	assert.NoError(t, err)
 
 	mizanServer = mizan.NewMizan(config)
-	go mizanServer.Start()
-
 	dsg = testservice.NewDummyServiceGen(replicas)
 	dsg.Start()
+	time.Sleep(15 * time.Second) // A smelly line that looks like shit
+	go mizanServer.Start()
+
 }
 
 func tearDown(t *testing.T) {

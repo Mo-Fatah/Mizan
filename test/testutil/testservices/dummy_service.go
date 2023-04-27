@@ -16,7 +16,7 @@ type Service interface {
 }
 
 type DummyService struct {
-	Ch   chan struct{}
+	ch   chan struct{}
 	Port int
 }
 
@@ -33,7 +33,7 @@ func (ds *DummyService) Run() error {
 	}
 
 	go func() {
-		<-ds.Ch
+		<-ds.ch
 		server.Shutdown(context.TODO())
 	}()
 
@@ -63,7 +63,7 @@ func (dsg *DummyServiceGen) Stop() {
 func (dsg *DummyServiceGen) Start() {
 	for i := 0; i < dsg.replicas; i++ {
 		ds := &DummyService{
-			Ch:   dsg.ch,
+			ch:   dsg.ch,
 			Port: BASE_PORT + i,
 		}
 		go ds.Run()

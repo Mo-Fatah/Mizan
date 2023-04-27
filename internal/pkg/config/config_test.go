@@ -27,7 +27,7 @@ services:
 		Services: []Service{
 			{
 				Name: "test service",
-				Replicas: []Replica{
+				Replicas: []*Replica{
 					{
 						Url: "http://localhost:9090",
 					},
@@ -76,7 +76,7 @@ services:
 		Services: []Service{
 			{
 				Name: "test service",
-				Replicas: []Replica{
+				Replicas: []*Replica{
 					{
 						Url:      "http://localhost:9090",
 						MetaData: map[string]string{"weight": "1"},

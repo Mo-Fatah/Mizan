@@ -23,12 +23,12 @@ type WRR struct {
 	// When this counter reaches the weight of the current server, the next server will be selected
 	currentServerLoadCounter uint32
 
-	hc *health.HealthChecker
+	Hc *health.HealthChecker
 }
 
-func NewWRR() *WRR {
+func NewWRR(servers []*common.Server) *WRR {
 	return &WRR{
-		servers: []*common.Server{},
+		servers: servers,
 		mu:      &sync.Mutex{},
 	}
 }
@@ -37,6 +37,7 @@ func NewWRR() *WRR {
 func (wrr *WRR) Next() (*common.Server, error) {
 	wrr.mu.Lock()
 	defer wrr.mu.Unlock()
+
 	var server *common.Server
 	start := time.Now()
 	for {
@@ -58,6 +59,13 @@ func (wrr *WRR) Next() (*common.Server, error) {
 		}
 	}
 	return server, nil
+}
+
+func (rr *WRR) HealthChecker() *health.HealthChecker {
+	return rr.Hc
+}
+func (rr *WRR) SetHealthChecker(hc *health.HealthChecker) {
+	rr.Hc = hc
 }
 
 func (wrr *WRR) Add(s *common.Server) {

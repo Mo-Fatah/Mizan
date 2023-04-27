@@ -6,6 +6,6 @@ import (
 )
 
 var (
-	timeout           time.Duration = 5 * time.Second
+	timeout           time.Duration = 10 * time.Second
 	ErrNoAliveServers               = errors.New("no alive replicas")
 )
