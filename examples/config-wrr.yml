@@ -17,3 +17,15 @@ services:
       - url: "http://localhost:9092"
         metadata:
           weight: 1
+  - matcher: "/api/v2"
+    name: "another service"
+    replicas:
+      - url: "http://localhost:9093"
+        metadata:
+          weight: 10
+      - url: "http://localhost:9094"
+        metadata:
+          weight: 1
+      - url: "http://localhost:9095"
+        metadata:
+          weight: 1

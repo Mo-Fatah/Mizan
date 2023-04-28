@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	// The period of time after which the health checker will check the health of servers
+	// The period of time after which the health checker will check the health of all replicas of a service
 	period = 10 * time.Second
 	// The timeout after which the health checker will consider a server unhealthy
 	timeout = 5 * time.Second
@@ -19,13 +19,18 @@ var (
 // It will periodically check the health of servers and update the status of each server
 // It is the only entity that can update the status of a server
 type HealthChecker struct {
-	servers  []*common.Server
-	shutdown chan bool
-	period   time.Duration
+	servers     []*common.Server
+	shutdown    chan bool
+	period      time.Duration
+	serviceName string
 }
 
-func NewHealthChecker(servers []*common.Server, ch chan bool) *HealthChecker {
+func NewHealthChecker(servers []*common.Server, serviceName string, ch chan bool) *HealthChecker {
 	// Check the health of servers before returning to Initialize the status of servers
+	if len(servers) == 0 {
+		log.Fatalf("No servers provided for service: %s", serviceName)
+	}
+
 	for _, server := range servers {
 		checkHealth(server)
 	}
@@ -33,7 +38,8 @@ func NewHealthChecker(servers []*common.Server, ch chan bool) *HealthChecker {
 	return &HealthChecker{
 		servers: servers,
 		// shutdown channel is used to signal the health checker to stop checking the health of servers
-		shutdown: ch,
+		shutdown:    ch,
+		serviceName: serviceName,
 	}
 }
 
@@ -42,12 +48,13 @@ func (hc *HealthChecker) SetPeriod(period time.Duration) {
 }
 
 func (hc *HealthChecker) Start() {
+	log.Infof("Starting Health checker for service: %s", hc.serviceName)
 	ticker := time.NewTicker(period)
 	defer ticker.Stop()
 	for {
 		select {
 		case <-hc.shutdown:
-			log.Info("Health checker shutting down")
+			log.Infof("Shutting down health checker for service: %s ", hc.serviceName)
 			return
 		case <-ticker.C:
 			for _, server := range hc.servers {

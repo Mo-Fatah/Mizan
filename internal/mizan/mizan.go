@@ -40,7 +40,7 @@ func NewMizan(conf *config.Config) *Mizan {
 		}
 		serversMap[service.Matcher] = newBalancer(servers, conf.Strategy)
 
-		serversMap[service.Matcher].SetHealthChecker(health.NewHealthChecker(servers, shutdown))
+		serversMap[service.Matcher].SetHealthChecker(health.NewHealthChecker(servers, service.Name, shutdown))
 	}
 	// Start health checker
 	for _, serviceBalancer := range serversMap {
