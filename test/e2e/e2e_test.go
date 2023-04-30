@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/Mo-Fatah/mizan/internal/mizan"
 	"github.com/Mo-Fatah/mizan/internal/pkg/config"
@@ -20,7 +19,7 @@ import (
 // - Load balancing strategies with health checking
 
 var (
-	replicas    = 8
+	replicas    = 3
 	mizanServer *mizan.Mizan
 	dsg         *testservice.DummyServiceGen
 )
@@ -120,15 +119,16 @@ services:
 }
 
 func envSetup(t *testing.T, configYaml string) {
+	dsg = testservice.NewDummyServiceGen(replicas)
+	dsg.Start()
 	config, err := config.LoadConfig(strings.NewReader(configYaml))
 	assert.NoError(t, err)
 
 	mizanServer = mizan.NewMizan(config)
-	dsg = testservice.NewDummyServiceGen(replicas)
-	dsg.Start()
-	time.Sleep(15 * time.Second) // A smelly line that looks like shit
 	go mizanServer.Start()
-
+	for !mizanServer.IsReady() {
+		continue
+	}
 }
 
 func tearDown(t *testing.T) {

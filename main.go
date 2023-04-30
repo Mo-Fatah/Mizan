@@ -3,6 +3,9 @@ package main
 import (
 	"flag"
 	"os"
+	"os/signal"
+	"sync"
+	"syscall"
 
 	log "github.com/sirupsen/logrus"
 
@@ -29,5 +32,19 @@ func main() {
 	}
 
 	mizan := mizan.NewMizan(config)
+
+	// handle interrupts and gracefully shutdown the server
+	interrupt := make(chan os.Signal, 1)
+	signal.Notify(interrupt, syscall.SIGINT)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		<-interrupt
+		log.Info("Shutting down...")
+		mizan.ShutDown()
+	}()
+
 	mizan.Start()
+	wg.Wait()
 }

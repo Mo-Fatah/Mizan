@@ -20,12 +20,11 @@ var (
 // It is the only entity that can update the status of a server
 type HealthChecker struct {
 	servers     []*common.Server
-	shutdown    chan bool
 	period      time.Duration
 	serviceName string
 }
 
-func NewHealthChecker(servers []*common.Server, serviceName string, ch chan bool) *HealthChecker {
+func NewHealthChecker(servers []*common.Server, serviceName string) *HealthChecker {
 	// Check the health of servers before returning to Initialize the status of servers
 	if len(servers) == 0 {
 		log.Fatalf("No servers provided for service: %s", serviceName)
@@ -38,7 +37,6 @@ func NewHealthChecker(servers []*common.Server, serviceName string, ch chan bool
 	return &HealthChecker{
 		servers: servers,
 		// shutdown channel is used to signal the health checker to stop checking the health of servers
-		shutdown:    ch,
 		serviceName: serviceName,
 	}
 }
@@ -52,14 +50,9 @@ func (hc *HealthChecker) Start() {
 	ticker := time.NewTicker(period)
 	defer ticker.Stop()
 	for {
-		select {
-		case <-hc.shutdown:
-			log.Infof("Shutting down health checker for service: %s ", hc.serviceName)
-			return
-		case <-ticker.C:
-			for _, server := range hc.servers {
-				go checkHealth(server)
-			}
+		<-ticker.C
+		for _, server := range hc.servers {
+			go checkHealth(server)
 		}
 	}
 }

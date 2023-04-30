@@ -40,7 +40,6 @@ func (ds *DummyService) Run() error {
 	if err := server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 		return err
 	}
-
 	return nil
 }
 
