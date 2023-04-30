@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 )
 
@@ -53,6 +54,16 @@ func NewDummyServiceGen(replicas int) *DummyServiceGen {
 		replicas: replicas,
 		ch:       make(chan struct{}),
 	}
+}
+
+func (dsg *DummyServiceGen) IsReady() bool {
+	for i := 0; i < dsg.replicas; i++ {
+		_, err := net.Dial("tcp", fmt.Sprintf(":%d", BASE_PORT+i))
+		if err != nil {
+			return false
+		}
+	}
+	return true
 }
 
 func (dsg *DummyServiceGen) Stop() {

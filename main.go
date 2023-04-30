@@ -41,7 +41,7 @@ func main() {
 	go func() {
 		defer wg.Done()
 		<-interrupt
-		log.Info("Shutting down...")
+		log.Info("Received interrupt signal, shutting down...")
 		mizan.ShutDown()
 	}()
 

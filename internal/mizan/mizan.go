@@ -16,10 +16,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// TODO (Mo-Fatah): Add support for TLS
-// TODO (Mo-Fatah): Add support for HTTP/2
-// TODO (Mo-Fatah): Add support for gRPC
-// TODO (Mo-Fatah): Add shutdown channel to gracefully shutdown the server
 type Mizan struct {
 	// The configuration loaded from the config file
 	// TODO (Mo-Fatah): Should add hot reload for config
@@ -27,7 +23,8 @@ type Mizan struct {
 	// Servers is a map of service matcher to a list of servers/replicas
 	serverMap map[string]balancer.Balancer
 	// Ports to which Mizan will listen on
-	ports    []int
+	ports []int
+	// The shutdown channel
 	shutDown chan struct{}
 }
 
@@ -90,7 +87,7 @@ func (m *Mizan) IsReady() bool {
 
 func (m *Mizan) startServer(port int, wg *sync.WaitGroup) {
 	defer wg.Done()
-	log.Info("Starting Listening on port ", port)
+	log.Info("Starting http server on port ", port)
 	server := http.Server{
 		Addr:    fmt.Sprintf(":%d", port),
 		Handler: m,
@@ -142,12 +139,19 @@ func (m *Mizan) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (m *Mizan) ShutDown() bool {
+	// Send shutdown signal to all health checkers
+	for _, serviceBalancer := range m.serverMap {
+		serviceBalancer.HealthChecker().ShutDown()
+	}
+
+	// Send shutdown signal to all servers
 	for range m.ports {
 		// Send shutdown signal
 		m.shutDown <- struct{}{}
 		// Wait for shutdown to complete
 		<-m.shutDown
 	}
+
 	log.Info("All servers are shutdown")
 	return true
 }
