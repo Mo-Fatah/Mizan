@@ -48,6 +48,12 @@ func (hc *HealthChecker) SetPeriod(period time.Duration) {
 
 func (hc *HealthChecker) Start() {
 	log.Infof("Starting Health checker for service: %s", hc.serviceName)
+	// Initially checking the health of servers before starting the health checker ticker
+	// Golang doesn't support a ticker with an instant first tick. See: https://github.com/golang/go/issues/17601
+	for _, server := range hc.servers {
+		go checkHealth(server)
+	}
+
 	ticker := time.NewTicker(period)
 	defer ticker.Stop()
 outer:

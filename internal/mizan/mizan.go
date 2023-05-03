@@ -80,7 +80,6 @@ func (m *Mizan) Start() {
 }
 
 func (m *Mizan) cfgController() error {
-	fmt.Println("Hello from cfgController 1")
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -98,17 +97,14 @@ func (m *Mizan) cfgController() error {
 		}
 	}
 
-	fmt.Println("Hello from cfgController 2")
 	m.config = newConfig
 	newServersMap := buildServersMap(newConfig)
 	m.serversMap = newServersMap
 
-	fmt.Println("Hello from cfgController 3")
 	// Start health checker
 	for _, serviceBalancer := range newServersMap {
 		go serviceBalancer.HealthChecker().Start()
 	}
-	fmt.Println("Hello from cfgController 4")
 	return nil
 }
 

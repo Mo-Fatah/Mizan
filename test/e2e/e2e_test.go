@@ -8,13 +8,13 @@ import (
 	"testing"
 
 	"github.com/Mo-Fatah/mizan/internal/mizan"
-	"github.com/Mo-Fatah/mizan/internal/pkg/config"
 	testservice "github.com/Mo-Fatah/mizan/test/testutil/testservices"
 	"github.com/stretchr/testify/assert"
 )
 
 // TODO (Mo-Fatah): Add tests for the following:
-// - Load balancing strategies (Done)
+// - Load balancing strategies
+// - Hot reload
 // - Health checking
 // - Load balancing strategies with health checking
 
@@ -22,26 +22,14 @@ var (
 	replicas    = 3
 	mizanServer *mizan.Mizan
 	dsg         *testservice.DummyServiceGen
+	yamlPathRR  = "./testConfigs/rr.yml"
+	yamlPathWRR = "./testConfigs/wrr.yml"
 )
 
 // Round Robin should rotate on the servers in the order they are defined in the config
 // So if we have 3 servers, the first request should go to the first server, the second to the second server and so on
 func TestE2E_BasicRoundRobin(t *testing.T) {
-	configYaml := `
-strategy: "rr"
-ports:
-  - 8080
-  - 8081
-  - 8082
-services: 
-  - matcher: "/api/v1"
-    name: "test service"
-    replicas:
-      - url: "http://localhost:9090"
-      - url: "http://localhost:9091"
-      - url: "http://localhost:9092"
-`
-	envSetup(t, configYaml)
+	envSetup(t, yamlPathRR)
 	defer tearDown(t)
 
 	ports := []int{9090, 9091, 9092}
@@ -67,29 +55,8 @@ services:
 // Weighted Round Robin should rotate on the servers considering their weights
 // So if we have 2 servers with weights 2 and 1, the first 2 requests should go to the first server and the third to the second server
 func TestE2E_BasicWeightedRoundRobin(t *testing.T) {
-	configYaml := `
-strategy: "wrr"
-ports:
-  - 8080
-  - 8081
-  - 8082
-
-services:
-  - matcher: "/api/v1"
-    name: "test service"
-    replicas:
-      - url: "http://localhost:9090"
-        metadata:
-          weight: 6
-      - url: "http://localhost:9091"
-        metadata:
-          weight: 3
-      - url: "http://localhost:9092"
-        metadata:
-          weight: 1
-`
-	envSetup(t, configYaml)
-	//defer tearDown(t)
+	envSetup(t, yamlPathWRR)
+	defer tearDown(t)
 
 	portsFreq := map[int]int{
 		9090: 0,
@@ -112,19 +79,16 @@ services:
 		assert.NoError(t, err)
 		portsFreq[servicePort]++
 	}
-	fmt.Println(portsFreq)
 	assert.Equal(t, portsFreq[9090], 6)
 	assert.Equal(t, portsFreq[9091], 3)
 	assert.Equal(t, portsFreq[9092], 1)
 }
 
-func envSetup(t *testing.T, configYaml string) {
+func envSetup(t *testing.T, yamlPath string) {
 	dsg = testservice.NewDummyServiceGen(replicas)
 	dsg.Start()
-	config, err := config.LoadConfig(strings.NewReader(configYaml))
-	assert.NoError(t, err)
 
-	mizanServer = mizan.NewMizan(config)
+	mizanServer = mizan.NewMizan(yamlPath)
 	go mizanServer.Start()
 	for !mizanServer.IsReady() {
 		continue

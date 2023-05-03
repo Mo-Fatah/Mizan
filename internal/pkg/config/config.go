@@ -1,7 +1,6 @@
 package config
 
 import (
-	"fmt"
 	"io"
 	"os"
 
@@ -40,8 +39,6 @@ func LoadConfig(filePath string) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	fmt.Println(string(buf))
 
 	config := Config{}
 

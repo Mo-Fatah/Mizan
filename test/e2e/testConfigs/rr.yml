@@ -1,0 +1,13 @@
+# rr : Round Robin
+strategy: "rr"
+ports:
+  - 8080
+  - 8081
+  - 8082
+services: 
+  - matcher: "/api/v1"
+    name: "test service"
+    replicas:
+      - url: "http://localhost:9090"
+      - url: "http://localhost:9091"
+      - url: "http://localhost:9092"
