@@ -42,7 +42,7 @@ func NewServer(replica *config.Replica, serviceName string) *Server {
 		url:         serverUrl,
 		proxy:       httputil.NewSingleHostReverseProxy(serverUrl),
 		metaData:    metaData,
-		alive:       false, /* TODO (Mo-Fatah): Should be false by default */
+		alive:       false,
 		serviceName: serviceName,
 		mu:          &sync.Mutex{},
 	}

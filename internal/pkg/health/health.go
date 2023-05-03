@@ -9,10 +9,13 @@ import (
 )
 
 var (
+	// The below two variables are currently hardcoded but should be configurable or have resonable defaults
+	// TODO (Mo-Fatah): Make the below two variables configurable and add resonable defaults
+
 	// The period of time after which the health checker will check the health of all replicas of a service
 	period = 10 * time.Second
 	// The timeout after which the health checker will consider a server unhealthy
-	timeout = 5 * time.Second
+	timeout = 3 * time.Second
 )
 
 // HealthChecker is a struct that is responsible for checking the health of servers
@@ -30,10 +33,6 @@ func NewHealthChecker(servers []*common.Server, serviceName string) *HealthCheck
 	// Check the health of servers before returning to Initialize the status of servers
 	if len(servers) == 0 {
 		log.Fatalf("No servers provided for service: %s", serviceName)
-	}
-
-	for _, server := range servers {
-		checkHealth(server)
 	}
 
 	return &HealthChecker{

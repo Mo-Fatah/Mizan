@@ -10,7 +10,6 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/Mo-Fatah/mizan/internal/mizan"
-	"github.com/Mo-Fatah/mizan/internal/pkg/config"
 )
 
 var (
@@ -20,18 +19,13 @@ var (
 func main() {
 	flag.Parse()
 
-	file, err := os.Open(*configFile)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer file.Close()
-
-	config, err := config.LoadConfig(file)
+	// check if the config file exists
+	_, err := os.Stat(*configFile)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	mizan := mizan.NewMizan(config)
+	mizan := mizan.NewMizan(*configFile)
 
 	// handle interrupts and gracefully shutdown the server
 	interrupt := make(chan os.Signal, 1)
