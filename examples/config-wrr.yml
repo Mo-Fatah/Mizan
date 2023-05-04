@@ -1,5 +1,6 @@
 # wrr : Weighted Round Robin
 strategy: "wrr"
+# random ports for testing/development purposes
 ports:
   - 8080
   - 8081

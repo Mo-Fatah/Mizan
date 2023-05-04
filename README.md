@@ -5,7 +5,7 @@
 ## Roadmap
 - [x] Multiple Load Balancing Algorithms
 - [x] Continuous Health Check 
-- [ ] Hot Reload without Restarting
+- [x] Hot Configuration Reloading without Restarting
 - [ ] Layer 4 Load Balancing
 - [ ] TLS Support
 - [ ] HTTP/2 Support
