@@ -203,14 +203,6 @@ func (m *Mizan) startServer(port int, wg *sync.WaitGroup) {
 	}
 }
 
-func (m *Mizan) findService(path string) (balancer.Balancer, error) {
-	if _, ok := m.serversMap[path]; !ok {
-		return nil, fmt.Errorf("couldn't find path %s", path)
-	}
-	return m.serversMap[path], nil
-}
-
-// Between
 func (m *Mizan) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	service := r.URL.Path
 	log.Infof("Request received from address %s to service %s", r.RemoteAddr, service)
@@ -233,6 +225,13 @@ func (m *Mizan) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	log.Infof("Proxying request to %s", server.GetUrl().String())
 	server.Proxy(w, r)
+}
+
+func (m *Mizan) findService(path string) (balancer.Balancer, error) {
+	if _, ok := m.serversMap[path]; !ok {
+		return nil, fmt.Errorf("couldn't find path %s", path)
+	}
+	return m.serversMap[path], nil
 }
 
 func (m *Mizan) ShutDown() bool {
