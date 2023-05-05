@@ -203,9 +203,14 @@ func (m *Mizan) IsReady() bool {
 func (m *Mizan) startHttpServer(port int, wg *sync.WaitGroup) {
 	defer wg.Done()
 	log.Info("Starting http server on port ", port)
+	// Timeouts are set to avoid Slowloris attacks. Values are subjectively chosen.
+	// see: https://blog.cloudflare.com/the-complete-guide-to-golang-net-http-timeouts/
 	server := http.Server{
-		Addr:    fmt.Sprintf(":%d", port),
-		Handler: m,
+		Addr:         fmt.Sprintf(":%d", port),
+		Handler:      m,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 5 * time.Second,
+		IdleTimeout:  120 * time.Second,
 	}
 
 	go func() {
