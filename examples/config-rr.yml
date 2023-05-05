@@ -1,5 +1,6 @@
 # rr : Round Robin
 strategy: "rr"
+max_connections: 1024 
 # random ports for testing/development purposes
 ports:
   - 8080

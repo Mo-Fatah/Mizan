@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	balancer "github.com/Mo-Fatah/mizan/internal/pkg/balancer"
@@ -19,7 +20,8 @@ import (
 )
 
 type Mizan struct {
-	mu *sync.Mutex
+	// a general mutex to be used for locking operations on Mizan
+	mizanLock *sync.Mutex
 	// The reader from which the config is loaded
 	configPath string
 	// The configuration loaded from the config file
@@ -33,28 +35,36 @@ type Mizan struct {
 	shutdownCh chan struct{}
 	// The channel through which Mizan will receive signals to reload config
 	reloadCh chan struct{}
+
+	maxConnections uint32
+
+	connections uint32
 }
 
 func NewMizan(configPath string) *Mizan {
 	shutdownCh := make(chan struct{}, 1)
 	reloadCh := make(chan struct{}, 1)
-
 	conf, err := config.LoadConfig(configPath)
 	if err != nil {
 		log.Fatalf("Error while loading config: %s", err)
 	}
-	// Start health checker
-	//for _, serviceBalancer := range serversMap {
-	//	go serviceBalancer.HealthChecker().Start()
-	//}
+
+	var ports []int
+	if conf.Ports == nil || len(conf.Ports) == 0 {
+		ports = []int{433}
+	} else {
+		ports = conf.Ports
+	}
 
 	return &Mizan{
-		configPath: configPath,
-		config:     conf,
-		ports:      conf.Ports,
-		shutdownCh: shutdownCh,
-		reloadCh:   reloadCh,
-		mu:         &sync.Mutex{},
+		configPath:     configPath,
+		config:         conf,
+		ports:          ports,
+		shutdownCh:     shutdownCh,
+		reloadCh:       reloadCh,
+		mizanLock:      &sync.Mutex{},
+		maxConnections: conf.MaxConnections,
+		connections:    0,
 	}
 }
 
@@ -74,22 +84,19 @@ func (m *Mizan) Start() {
 
 	for _, port := range m.ports {
 		wg.Add(1)
-		go m.startServer(port, wg)
+		go m.startHttpServer(port, wg)
 	}
 	wg.Wait()
 }
 
 func (m *Mizan) cfgController() error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
 
 	newConfig, err := config.LoadConfig(m.configPath)
 	if err != nil {
 		log.Errorf("Error while loading config: %s", err)
 		return err
 	}
-
-	// If this the first time the config is loaded then we don't need to do anything
+	// If this the first time the config is loaded then we should skip shutting down the health checker
 	// otherwise, we need to shutdown the health checker for the old config
 	if m.serversMap != nil {
 		for _, service := range m.serversMap {
@@ -97,9 +104,12 @@ func (m *Mizan) cfgController() error {
 		}
 	}
 
-	m.config = newConfig
 	newServersMap := buildServersMap(newConfig)
+
+	m.mizanLock.Lock()
+	m.config = newConfig
 	m.serversMap = newServersMap
+	m.mizanLock.Unlock()
 
 	// Start health checker
 	for _, serviceBalancer := range newServersMap {
@@ -126,10 +136,10 @@ outer:
 			if event.Has(fsnotify.Write) {
 				// A signle write event can produce multiple write signals
 				// This is a hack to avoid double reloads
+				// TODO (Mo-Fatah): Find a better way to deduplicate write events
 				if time.Since(start) < 100*time.Microsecond {
 					continue
 				}
-				// TODO (Mo-Fatah): Do Something to reflect the changes
 				log.Info("Config file has been modified. Reloading config")
 				go m.cfgController()
 			}
@@ -141,6 +151,17 @@ outer:
 		case err := <-watcher.Errors:
 			log.Errorf("Error while watching config file: %s", err)
 		}
+	}
+}
+
+func (m *Mizan) incrementConnections() {
+	atomic.AddUint32(&m.connections, 1)
+}
+
+func (m *Mizan) decrementConnections() {
+	// TODO (Mo-Fatah): There a chance of underflow here. Investigate
+	if connections := atomic.LoadUint32(&m.connections); connections > 0 {
+		atomic.AddUint32(&m.connections, ^uint32(0))
 	}
 }
 
@@ -179,7 +200,7 @@ func (m *Mizan) IsReady() bool {
 	return true
 }
 
-func (m *Mizan) startServer(port int, wg *sync.WaitGroup) {
+func (m *Mizan) startHttpServer(port int, wg *sync.WaitGroup) {
 	defer wg.Done()
 	log.Info("Starting http server on port ", port)
 	server := http.Server{
@@ -204,6 +225,15 @@ func (m *Mizan) startServer(port int, wg *sync.WaitGroup) {
 }
 
 func (m *Mizan) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if m.connections >= m.config.MaxConnections {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		log.Error("Max connections reached")
+		return
+	}
+
+	m.incrementConnections()
+	defer m.decrementConnections()
+
 	service := r.URL.Path
 	log.Infof("Request received from address %s to service %s", r.RemoteAddr, service)
 	// After the next line being executed, the services map may change due to hot config changes

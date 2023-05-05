@@ -12,9 +12,8 @@ type Config struct {
 	Strategy string    `yaml:"strategy"`
 	// Ports to which Mizan will listen on
 	// TODO (Mo-Fatah): Should deal with distributed ports across multiple nodes
-	Ports []int `yaml:"ports"`
-	// The file content of the config file
-	// This is used to compare the config file content with the new one to check if there is any change
+	Ports          []int  `yaml:"ports"`
+	MaxConnections uint32 `yaml:"max_connections"`
 }
 
 type Service struct {

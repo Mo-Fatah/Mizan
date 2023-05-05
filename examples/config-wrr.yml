@@ -1,5 +1,6 @@
 # wrr : Weighted Round Robin
 strategy: "wrr"
+max_connections: 1024
 # random ports for testing/development purposes
 ports:
   - 8080

@@ -12,6 +12,7 @@ import (
 )
 
 type Server struct {
+	http.Server
 	serviceName string
 	url         *url.URL
 	// Proxy is the reverse proxy that will be used to proxy requests to this server
