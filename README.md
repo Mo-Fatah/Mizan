@@ -16,6 +16,9 @@ Experimental Load Balancer to balance traffic between multiple services and mult
 - **Layer 7 Load Balancing**
     - Load balancing based on HTTP request path.
 
+- **Graceful Shutdown**
+    - Gracefully shutting down the load balancer without dropping any connections.
+
 ## Usage
 ### Configuration
 Mizan uses YAML for configuration.  
@@ -47,6 +50,12 @@ The configuration file is divided into 4 sections:
             - **metadata**: the metadata of the replica, such as weight.
 
 Examples of configuration files can be found in the [examples](https://github.com/Mo-Fatah/mizan/tree/main/examples) directory.
+
+### Running
+Mizan can be run using the following command:
+```shell
+go run main.go -config-path <path to config file>
+```
 
 ## Roadmap
 - [x] Multiple Load Balancing Algorithms
