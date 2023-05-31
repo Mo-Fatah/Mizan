@@ -73,8 +73,6 @@ func NewMizan(configPath string) *Mizan {
 // 3. The health checker for each service
 // 2. The listening servers
 func (m *Mizan) Start() {
-	wg := &sync.WaitGroup{}
-
 	if err := m.cfgController(); err != nil {
 		log.Fatalf("Error while building servers map: %s", err)
 	}
@@ -82,6 +80,7 @@ func (m *Mizan) Start() {
 	log.Info("Starting Config Watcher")
 	go m.cfgWatcher()
 
+	wg := &sync.WaitGroup{}
 	for _, port := range m.ports {
 		wg.Add(1)
 		go m.startHttpServer(port, wg)
@@ -89,6 +88,11 @@ func (m *Mizan) Start() {
 	wg.Wait()
 }
 
+// cfgController is responsible for:
+// 1. Loading the configs
+// 2. Updating the config field in Mizan
+// 3. Building the servers map
+// 4. Starting the health checker for each service
 func (m *Mizan) cfgController() error {
 
 	newConfig, err := config.LoadConfig(m.configPath)
@@ -97,7 +101,7 @@ func (m *Mizan) cfgController() error {
 		return err
 	}
 	// If this the first time the config is loaded then we should skip shutting down the health checker
-	// otherwise, we need to shutdown the health checker for the old config
+	// otherwise, we need to shutdown the health checkers of the old services
 	if m.serversMap != nil {
 		for _, service := range m.serversMap {
 			service.HealthChecker().ShutDown()
