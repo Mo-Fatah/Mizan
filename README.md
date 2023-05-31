@@ -57,6 +57,24 @@ Mizan can be run using the following command:
 go run main.go -config-path <path to config file>
 ```
 
+### Running Examples
+1- There are example services that can served as a backend services and can be run by:
+```shell
+make example-service
+```
+2- Run Mizan with the example configurations in `./examples` by:
+```shell
+go run main.go -config-path ./examples/config-rr.yml
+```
+Now, the server is listening on ports `8080`, `8081` and `8082`. You can `curl` these ports from another terminal and mizan will distribute requests to the backend services
+
+3- Since the example services are running in the background, you can kill them with:
+```shell
+make kill-example
+```
+
+
+
 ## Roadmap
 - [x] Multiple Load Balancing Algorithms
 - [x] Continuous Health Check 
@@ -64,4 +82,5 @@ go run main.go -config-path <path to config file>
 - [ ] TLS Support
 - [ ] Layer 4 Load Balancing
 - [ ] HTTP/2 Support
+- [ ] Add OpenTelemtry Instrumentation
 - [ ] More comprehensive tests
